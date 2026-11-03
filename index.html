@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Liga Norte Cajeme - Control Estadístico de Básquetbol</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        basketball: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jsPDF y jsPDF-AutoTable para reportes PDF profesionales -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/plugin.min.js"></script>
+    <style>
+        /* Estilos base para diseño limpio y profesional con fondo blanco */
+        body {
+            background-color: #ffffff;
+            color: #1f2937;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Ocultar scrollbars en contenedores horizontales móviles */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased selection:bg-basketball-500 selection:text-white">
+
+    <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN -->
+    <div id="app" class="flex-1 flex flex-col min-h-0 w-full max-w-7xl mx-auto bg-white shadow-none sm:shadow-sm">
+        
+        <!-- HEADER / NAVEGACIÓN SUPERIOR -->
+        <header id="main-header" class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="goToHome()">
+                <div class="w-10 h-10 rounded-full bg-basketball-500 flex items-center justify-center text-white shadow-md">
+                    <i class="fa-solid fa-basketball text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-black tracking-wider text-gray-900 leading-tight">LIGA NORTE CAJEME</h1>
+                    <p class="text-xs text-gray-500 font-medium">Control Oficial de Partidos</p>
+                </div>
+            </div>
+            
+            <div id="header-actions" class="flex items-center space-x-2">
+                <!-- Se inyectan botones según la vista activa -->
+            </div>
+        </header>
+
+        <!-- CONTENIDO DINÁMICO DE VISTAS -->
+        <main id="view-container" class="flex-1 overflow-y-auto flex flex-col">
+            <!-- Las vistas se renderizan aquí mediante JavaScript -->
+        </main>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN / ACCIONES -->
+    <div id="modal-container" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div id="modal-content" class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all">
+            <!-- Contenido del modal dinámico -->
+        </div>
+    </div>
+
+    <!-- SCRIPT PRINCIPAL DE LA APLICACIÓN -->
+    <script>
+        /* ==========================================================================
+           CONFIGURACIÓN DE SEGURIDAD Y CONSTANTES
+           ========================================================================== */
+        const ADMIN_PASSWORD = "1551LN";
+
+        /* ==========================================================================
+           CONFIGURACIÓN DE DATOS (EQUIPOS Y JUGADORES)
+           ========================================================================== */
+        const TEAMS = [
+            {
+                id: "equipo1",
+                name: "HALCONES CAJEME",
+                shortName: "HALCONES",
+                color: "bg-orange-500",
+                players: [
+                    { id: "e1_p1", number: 7, firstName: "Juan", lastName: "Pérez" },
+                    { id: "e1_p2", number: 10, firstName: "Carlos", lastName: "López" },
+                    { id: "e1_p3", number: 15, firstName: "Luis", lastName: "García" },
+                    { id: "e1_p4", number: 23, firstName: "Roberto", lastName: "Sánchez" },
+                    { id: "e1_p5", number: 33, firstName: "Miguel", lastName: "Ángel" },
+                    { id: "e1_p6", number: 4, firstName: "Alejandro", lastName: "Martínez" },
+                    { id: "e1_p7", number: 12, firstName: "Francisco", lastName: "Rodríguez" },
+                    { id: "e1_p8", number: 8, firstName: "David", lastName: "Hernández" }
+                ]
+            },
+            {
+                id: "equipo2",
+                name: "YAQUIS BASKET",
+                shortName: "YAQUIS",
+                color: "bg-blue-600",
+                players: [
+                    { id: "e2_p1", number: 5, firstName: "Pedro", lastName: "Ramírez" },
+                    { id: "e2_p2", number: 11, firstName: "José", lastName: "Torres" },
+                    { id: "e2_p3", number: 14, firstName: "Fernando", lastName: "Flores" },
+                    { id: "e2_p4", number: 21, firstName: "Ricardo", lastName: "Rivera" },
+                    { id: "e2_p5", number: 30, firstName: "Daniel", lastName: "Gómez" },
+                    { id: "e2_p6", number: 9, firstName: "Javier", lastName: "Díaz" },
+                    { id: "e2_p7", number: 13, firstName: "Manuel", lastName: "Cruz" },
+                    { id: "e2_p8", number: 22, firstName: "Héctor", lastName: "Morales" }
+                ]
+            },
+            {
+                id: "equipo3",
+                name: "PUMAS OBREGÓN",
+                shortName: "PUMAS",
+                color: "bg-purple-600",
+                players: [
+                    { id: "e3_p1", number: 3, firstName: "Jorge", lastName: "Mendoza" },
+                    { id: "e3_p2", number: 8, firstName: "Raúl", lastName: "Castillo" },
+                    { id: "e3_p3", number: 15, firstName: "Gabriel", lastName: "Vargas" },
+                    { id: "e3_p4", number: 24, firstName: "Óscar", lastName: "Jiménez" },
+                    { id: "e3_p5", number: 32, firstName: "Eduardo", lastName: "Ruiz" }
+                ]
+            },
+            {
+                id: "equipo4",
+                name: "WARRIORS CAJEME",
+                shortName: "WARRIORS",
+                color: "bg-yellow-600",
+                players: [
+                    { id: "e4_p1", number: 2, firstName: "Mario", lastName: "Acosta" },
+                    { id: "e4_p2", number: 6, firstName: "Sergio", lastName: "Valenzuela" },
+                    { id: "e4_p3", number: 11, firstName: "Adrián", lastName: "Beltrán" },
+                    { id: "e4_p4", number: 25, firstName: "Iván", lastName: "Lara" },
+                    { id: "e4_p5", number: 35, firstName: "Armando", lastName: "Zazueta" }
+                ]
+            }
+        ];
+
+        /* ========================================================================
+           CONFIGURACIÓN DE JORNADAS
+           AQUÍ PUEDES CAMBIAR LOS PARTIDOS, FECHAS Y HORAS
+           ========================================================================
+           Instrucciones:
+           - team1 = ID del primer equipo (debe coincidir con TEAMS)
+           - team2 = ID del segundo equipo (debe coincidir con TEAMS)
+           - date = Fecha en formato YYYY-MM-DD (ej: "2026-11-05").
+           - time = Hora en formato de 24h ("19:00", "20:00" o "21:00").
+           ======================================================================== */
+        const JORNADAS = [
+            {
+                id: 1,
+                matches: [
+                    {
+                        team1: "equipo1",
+                        team2: "equipo2",
+                        date: "2026-11-05",
+                        time: "20:00"
+                    },
+                    {
+                        team1: "equipo3",
+                        team2: "equipo4",
+                        date: "2026-11-06",
+                        time: "21:00"
+                    }
+                ]
+            },
+            {
+                id: 2,
+                matches: [
+                    { team1: "equipo1", team2: "equipo3" },
+                    { team1: "equipo2", team2: "equipo4" }
+                ]
+            },
+            {
+                id: 3,
+                matches: [
+                    { team1: "equipo1", team2: "equipo4" },
+                    { team1: "equipo2", team2: "equipo3" }
+                ]
+            },
+            {
+                id: 4,
+                matches: [
+                    { team1: "equipo2", team2: "equipo1" },
+                    { team1: "equipo4", team2: "equipo3" }
+                ]
+            },
+            {
+                id: 5,
+                matches: [
+                    { team1: "equipo3", team2: "equipo1" },
+                    { team1: "equipo4", team2: "equipo2" }
+                ]
+            },
+            {
+                id: 6,
+                matches: [
+                    { team1: "equipo4", team2: "equipo1" },
+                    { team1: "equipo3", team2: "equipo2" }
+                ]
+            },
+            {
+                id: 7,
+                matches: [
+                    { team1: "equipo1", team2: "equipo2" },
+                    { team1: "equipo3", team2: "equipo4" }
+                ]
+            },
+            {
+                id: 8,
+                matches: [
+                    { team1: "equipo1", team2: "equipo3" },
+                    { team1: "equipo2", team2: "equipo4" }
+                ]
+            },
+            {
+                id: 9,
+                matches: [
+                    { team1: "equipo1", team2: "equipo4" },
+                    { team1: "equipo2", team2: "equipo3" }
+                ]
+            },
+            {
+                id: 10,
+                matches: [
+                    { team1: "equipo2", team2: "equipo1" },
+                    { team1: "equipo4", team2: "equipo3" }
+                ]
+            }
+        ];
+
+        /* ==========================================================================
+           AUTOGENERACIÓN DE FECHAS Y HORAS VÁLIDAS
+           ========================================================================== */
+        function initializeJornadasSchedule() {
+            const allowedHours = ["19:00", "20:00", "21:00"];
+            let baseDate = new Date(2026, 10, 3); // 3 de nov 2026
+
+            JORNADAS.forEach((jornada, jIdx) => {
+                jornada.matches.forEach((match, mIdx) => {
+                    if (!match.date || !match.time) {
+                        while (true) {
+                            const dayOfWeek = baseDate.getDay();
+                            if (dayOfWeek === 2 || dayOfWeek === 4 || dayOfWeek === 5) {
+                                break;
+                            }
+                            baseDate.setDate(baseDate.getDate() + 1);
+                        }
+
+                        const year = baseDate.getFullYear();
+                        const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(baseDate.getDate()).padStart(2, '0');
+
+                        match.date = match.date || `${year}-${month}-${day}`;
+                        match.time = match.time || allowedHours[(jIdx + mIdx) % allowedHours.length];
+                        baseDate.setDate(baseDate.getDate() + 2);
+                    }
+                });
+            });
+        }
+
+        function formatReadableDate(dateString) {
+            if (!dateString) return "";
+            try {
+                const [year, month, day] = dateString.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                let formatted = date.toLocaleDateString('es-ES', options);
+                return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+            } catch(e) {
+                return dateString;
+            }
+        }
+
+        function formatReadableTime(timeString) {
+            if (!timeString) return "";
+            try {
+                const [hourStr, minStr] = timeString.split(':');
+                let hour = parseInt(hourStr, 10);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                hour = hour % 12;
+                hour = hour ? hour : 12;
+                return `${hour}:${minStr || '00'} ${ampm}`;
+            } catch(e) {
+                return timeString;
+            }
+        }
+
+        /* ==========================================================================
+           ESTADO GLOBAL DE LA APLICACIÓN
+           ========================================================================== */
+        let currentView = 'home';
+        let selectedJornadaId = null;
+        let selectedMatchData = null;
+        
+        let matchState = {
+            active: false,
+            finished: false,
+            currentQuarter: 1,
+            startTime: null,
+            endTime: null,
+            scores: { team1: 0, team2: 0 },
+            quarters: {
+                1: { team1: 0, team2: 0 },
+                2: { team1: 0, team2: 0 },
+                3: { team1: 0, team2: 0 },
+                4: { team1: 0, team2: 0 }
+            },
+            teamStats: {}, 
+            history: [] 
+        };
+
+        function initApp() {
+            initializeJornadasSchedule();
+            const savedMatch = localStorage.getItem('lnc_active_match');
+            if (savedMatch) {
+                try {
+                    const parsed = JSON.parse(savedMatch);
+                    if (parsed && parsed.matchData) {
+                        selectedMatchData = parsed.matchData;
+                        matchState = parsed.matchState;
+                    }
+                } catch(e) {
+                    console.error("Error al cargar estado guardado", e);
+                }
+            }
+            renderView();
+        }
+
+        function saveState() {
+            if (selectedMatchData && matchState.active) {
+                localStorage.setItem('lnc_active_match', JSON.stringify({
+                    matchData: selectedMatchData,
+                    matchState: matchState
+                }));
+            } else {
+                localStorage.removeItem('lnc_active_match');
+            }
+        }
+
+        function goToHome() {
+            currentView = 'home';
+            renderView();
+        }
+
+        function goToJornadas() {
+            currentView = 'jornadas';
+            renderView();
+        }
+
+        function renderView() {
+            const container = document.getElementById('view-container');
+            const headerActions = document.getElementById('header-actions');
+            
+            headerActions.innerHTML = '';
+
+            if (currentView === 'home') {
+                container.innerHTML = renderHomeView();
+            } else if (currentView === 'jornadas') {
+                headerActions.innerHTML = `
+                    <button onclick="goToHome()" class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                        <i class="fa-solid fa-house mr-1"></i> Inicio
+                    </button>
+                `;
+                container.innerHTML = renderJornadasView();
+            } else if (currentView === 'match') {
+                headerActions.innerHTML = `
+                    <button onclick="confirmResetMatch()" class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> Reiniciar
+                    </button>
+                    <button onclick="confirmExitMatch()" class="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                        <i class="fa-solid fa-house mr-1"></i> Salir
+                    </button>
+                `;
+                container.innerHTML = renderMatchView();
+            } else if (currentView === 'report') {
+                headerActions.innerHTML = `
+                    <button onclick="currentView='match'; renderView();" class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Volver al Partido
+                    </button>
+                `;
+                container.innerHTML = renderReportView();
+            }
+        }
+
+        /* ==========================================================================
+           1. PANTALLA DE INICIO
+           ========================================================================== */
+        function renderHomeView() {
+            const hasPending = localStorage.getItem('lnc_active_match') !== null;
+            return `
+                <div class="flex-1 flex flex-col items-center justify-center p-6 text-center bg-white">
+                    <div class="w-24 h-24 bg-basketball-500 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-orange-500/20 mb-6 transform hover:scale-105 transition duration-300">
+                        <i class="fa-solid fa-basketball text-5xl"></i>
+                    </div>
+                    
+                    <h2 class="text-3xl sm:text-5xl font-black text-gray-900 tracking-tight mb-2">
+                        LIGA NORTE CAJEME
+                    </h2>
+                    <p class="text-base sm:text-lg font-medium text-gray-500 mb-8">
+                        Sistema de Control Estadístico
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4 w-full max-w-xs">
+                        <button onclick="goToJornadas()" class="w-full py-4 px-8 bg-basketball-500 hover:bg-basketball-600 text-white font-bold text-lg rounded-2xl shadow-lg shadow-orange-500/30 transition transform active:scale-95 flex items-center justify-center space-x-3">
+                            <i class="fa-solid fa-play"></i>
+                            <span>EMPEZAR PARTIDO</span>
+                        </button>
+                        
+                        ${hasPending ? `
+                        <button onclick="resumePendingMatch()" class="w-full py-4 px-8 bg-gray-900 hover:bg-gray-800 text-white font-bold text-base rounded-2xl shadow-lg transition transform active:scale-95 flex items-center justify-center space-x-3">
+                            <i class="fa-solid fa-arrow-rotate-right"></i>
+                            <span>CONTINUAR PENDIENTE</span>
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function resumePendingMatch() {
+            const savedMatch = localStorage.getItem('lnc_active_match');
+            if (savedMatch) {
+                const parsed = JSON.parse(savedMatch);
+                selectedMatchData = parsed.matchData;
+                matchState = parsed.matchState;
+                currentView = 'match';
+                renderView();
+            }
+        }
+
+        /* ==========================================================================
+           2 & 3. SELECCIÓN DE JORNADA Y PARTIDO
+           ========================================================================== */
+        function renderJornadasView() {
+            if (!selectedJornadaId) selectedJornadaId = 1;
+            const jornada = JORNADAS.find(j => j.id === selectedJornadaId);
+
+            let jornadasTabsHTML = '';
+            for (let i = 1; i <= 10; i++) {
+                const active = i === selectedJornadaId;
+                jornadasTabsHTML += `
+                    <button onclick="selectJornada(${i})" class="px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition ${active ? 'bg-basketball-500 text-white shadow-md shadow-orange-500/20' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">
+                        Jornada ${i}
+                    </button>
+                `;
+            }
+
+            let matchesHTML = '';
+            jornada.matches.forEach((m) => {
+                const t1 = TEAMS.find(t => t.id === m.team1);
+                const t2 = TEAMS.find(t => t.id === m.team2);
+                const readableDate = formatReadableDate(m.date);
+                const readableTime = formatReadableTime(m.time);
+
+                matchesHTML += `
+                    <div class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex flex-col items-center sm:items-start flex-1 w-full text-center sm:text-left">
+                            <div class="flex items-center justify-center sm:justify-start space-x-3 w-full mb-1">
+                                <span class="font-bold text-gray-900 text-base sm:text-lg">${t1.name}</span>
+                                <span class="px-2 py-0.5 bg-gray-100 font-black text-xs text-gray-500 rounded">VS</span>
+                                <span class="font-bold text-gray-900 text-base sm:text-lg">${t2.name}</span>
+                            </div>
+                            <div class="text-xs text-gray-500 font-medium flex items-center space-x-3 mt-1">
+                                <span><i class="fa-solid fa-calendar-days mr-1 text-basketball-500"></i> ${readableDate}</span>
+                                <span>•</span>
+                                <span><i class="fa-solid fa-clock mr-1 text-basketball-500"></i> ${readableTime}</span>
+                            </div>
+                        </div>
+                        <button onclick="promptStartMatch('${m.team1}', '${m.team2}', ${jornada.id}, '${m.date}', '${m.time}')" class="w-full sm:w-auto px-6 py-3 bg-gray-900 hover:bg-basketball-500 text-white font-bold text-sm rounded-xl transition flex items-center justify-center space-x-2 whitespace-nowrap">
+                            <span>Comenzar Partido</span>
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            return `
+                <div class="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full">
+                    <div class="mb-6 flex items-center justify-between">
+                        <h2 class="text-2xl font-black text-gray-900">Seleccionar Jornada</h2>
+                        <button onclick="goToHome()" class="text-sm font-semibold text-gray-500 hover:text-gray-900">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> Volver
+                        </button>
+                    </div>
+
+                    <div class="flex space-x-2 overflow-x-auto no-scrollbar pb-3 mb-6">
+                        ${jornadasTabsHTML}
+                    </div>
+
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Partidos de la Jornada ${selectedJornadaId}</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                        ${matchesHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectJornada(id) {
+            selectedJornadaId = id;
+            renderView();
+        }
+
+        function promptStartMatch(team1Id, team2Id, jornadaId, date, time) {
+            const t1 = TEAMS.find(t => t.id === team1Id);
+            const t2 = TEAMS.find(t => t.id === team2Id);
+
+            showModal(`
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-orange-100 text-basketball-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                        <i class="fa-solid fa-basketball"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-gray-900 mb-2">¿Deseas comenzar el partido?</h3>
+                    <p class="text-sm font-semibold text-gray-700 mb-1">${t1.name} vs ${t2.name}</p>
+                    <p class="text-xs text-gray-500 mb-6">${formatReadableDate(date)} a las ${formatReadableTime(time)}</p>
+                    
+                    <div class="flex space-x-3">
+                        <button onclick="closeModal()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">
+                            CANCELAR
+                        </button>
+                        <button onclick="promptAdminPasswordForStart('${team1Id}', '${team2Id}', ${jornadaId}, '${date}', '${time}')" class="flex-1 py-3 bg-basketball-500 hover:bg-basketball-600 text-white font-bold rounded-xl shadow-lg shadow-orange-500/20 transition">
+                            COMENZAR
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+
+        /* ==========================================================================
+           MODALES DE CONTRASEÑA DE ADMINISTRADOR (Inicia / Reinicia)
+           ========================================================================== */
+        function promptAdminPasswordForStart(team1Id, team2Id, jornadaId, date, time) {
+            showModal(`
+                <div class="text-center">
+                    <div class="w-14 h-14 bg-gray-100 text-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-gray-900 mb-1">Acceso de administrador</h3>
+                    <p class="text-xs text-gray-500 mb-4">Ingresa la contraseña para iniciar el partido</p>
+                    
+                    <div class="mb-4">
+                        <input type="password" id="admin-password-input" placeholder="Contraseña" class="w-full px-4 py-3 border border-gray-300 rounded-xl text-center text-lg font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-basketball-500">
+                        <p id="admin-error-msg" class="text-xs text-red-500 mt-1 hidden font-semibold">Contraseña incorrecta.</p>
+                    </div>
+
+                    <div class="flex space-x-3">
+                        <button onclick="promptStartMatch('${team1Id}', '${team2Id}', ${jornadaId}, '${date}', '${time}')" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">
+                            CANCELAR
+                        </button>
+                        <button onclick="verifyPasswordAndStart('${team1Id}', '${team2Id}', ${jornadaId}, '${date}', '${time}')" class="flex-1 py-3 bg-basketball-500 hover:bg-basketball-600 text-white font-bold rounded-xl shadow-lg transition">
+                            CONFIRMAR
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+
+        function verifyPasswordAndStart(team1Id, team2Id, jornadaId, date, time) {
+            const inputVal = document.getElementById('admin-password-input').value;
+            if (inputVal === ADMIN_PASSWORD) {
+                startMatch(team1Id, team2Id, jornadaId, date, time);
+            } else {
+                const errorMsg = document.getElementById('admin-error-msg');
+                errorMsg.classList.remove('hidden');
+                document.getElementById('admin-password-input').focus();
+            }
+        }
+
+        function startMatch(team1Id, team2Id, jornadaId, date, time) {
+            closeModal();
+            selectedMatchData = { jornadaId, team1Id, team2Id, date, time };
+            
+            const teamStats = {};
+            [team1Id, team2Id].forEach(tId => {
+                const team = TEAMS.find(t => t.id === tId);
+                teamStats[tId] = {
+                    players: {},
+                    totalFouls: 0,
+                    totalTechs: 0
+                };
+                team.players.forEach(p => {
+                    teamStats[tId].players[p.id] = {
+                        ...p,
+                        freeThrows: 0,
+                        twoPointers: 0,
+                        threePointers: 0,
+                        points: 0,
+                        personalFouls: 0,
+                        technicalFouls: 0
+                    };
+                });
+            });
+
+            matchState = {
+                active: true,
+                finished: false,
+                currentQuarter: 1,
+                startTime: new Date().toISOString(),
+                endTime: null,
+                scores: { team1: 0, team2: 0 },
+                quarters: { 1: { team1: 0, team2: 0 }, 2: { team1: 0, team2: 0 }, 3: { team1: 0, team2: 0 }, 4: { team1: 0, team2: 0 } },
+                teamStats: teamStats,
+                history: []
+            };
+
+            saveState();
+            currentView = 'match';
+            renderView();
+        }
+
+        /* ==========================================================================
+           PANTALLA PRINCIPAL DEL PARTIDO
+           ========================================================================== */
+        let selectedPlayerForAction = { teamId: null, playerId: null };
+
+        function renderMatchView() {
+            const t1 = TEAMS.find(t => t.id === selectedMatchData.team1Id);
+            const t2 = TEAMS.find(t => t.id === selectedMatchData.team2Id);
+            const s1 = matchState.scores.team1;
+            const s2 = matchState.scores.team2;
+
+            return `
+                <div class="flex-1 flex flex-col p-3 sm:p-6 max-w-6xl mx-auto w-full gap-4">
+                    
+                    <div class="bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-3xl p-5 shadow-xl flex flex-col items-center relative overflow-hidden">
+                        <div class="absolute top-3 left-4 text-xs font-bold uppercase tracking-wider text-orange-400">
+                            Jornada ${selectedMatchData.jornadaId} • Q${matchState.currentQuarter} ${matchState.finished ? '• <span class="text-red-400 font-black">FINALIZADO</span>' : ''}
+                        </div>
+                        <div class="absolute top-3 right-4 flex space-x-2">
+                            <button onclick="openStatsModal()" class="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-lg transition">
+                                <i class="fa-solid fa-chart-bar mr-1"></i> Estadísticas
+                            </button>
+                            ${!matchState.finished ? `
+                            <button onclick="confirmNextQuarter()" class="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition">
+                                <i class="fa-solid fa-forward mr-1"></i> Avanzar Q
+                            </button>
+                            ` : ''}
+                        </div>
+
+                        <div class="grid grid-cols-3 items-center w-full mt-6 mb-2">
+                            <div class="text-center px-2">
+                                <h3 class="text-sm sm:text-xl font-black tracking-wide truncate text-orange-200">${t1.name}</h3>
+                            </div>
+                            <div class="flex items-center justify-center space-x-3">
+                                <span class="text-4xl sm:text-6xl font-black tracking-tighter">${s1}</span>
+                                <span class="text-lg sm:text-2xl font-light text-gray-500">VS</span>
+                                <span class="text-4xl sm:text-6xl font-black tracking-tighter">${s2}</span>
+                            </div>
+                            <div class="text-center px-2">
+                                <h3 class="text-sm sm:text-xl font-black tracking-wide truncate text-blue-200">${t2.name}</h3>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-center space-x-2 mt-2">
+                            <button onclick="undoLastAction()" class="px-3 py-1 bg-white/10 hover:bg-white/20 text-xs font-bold rounded-lg transition flex items-center space-x-1 ${matchState.history.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span>Deshacer Última Acción</span>
+                            </button>
+                            ${matchState.finished ? `
+                            <button onclick="currentView='report'; renderView();" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-xs font-bold rounded-lg transition flex items-center space-x-1">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <span>Ver Reporte PDF</span>
+                            </button>
+                            ` : `
+                            <button onclick="confirmFinishMatch()" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-xs font-bold rounded-lg transition flex items-center space-x-1">
+                                <i class="fa-solid fa-flag-checkered"></i>
+                                <span>Finalizar Partido</span>
+                            </button>
+                            `}
+                        </div>
+                    </div>
+
+                    ${!matchState.finished ? `
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        ${renderTeamControlPanel(selectedMatchData.team1Id, t1)}
+                        ${renderTeamControlPanel(selectedMatchData.team2Id, t2)}
+                    </div>
+                    ` : `
+                    <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+                        <h3 class="text-xl font-black text-gray-900 mb-2">Partido Finalizado</h3>
+                        <p class="text-sm text-gray-600 mb-4">El partido ha concluido y las estadísticas están bloqueadas.</p>
+                        <button onclick="currentView='report'; renderView();" class="px-6 py-3 bg-basketball-500 hover:bg-basketball-600 text-white font-bold rounded-xl shadow-lg transition">
+                            <i class="fa-solid fa-file-pdf mr-2"></i> Generar y Ver Reporte Oficial PDF
+                        </button>
+                    </div>
+                    `}
+
+                    <!-- HISTORIAL DE ACCIONES -->
+                    <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                        <h3 class="font-bold text-gray-900 text-sm mb-3 flex items-center justify-between">
+                            <span><i class="fa-solid fa-clock-rotate-left mr-2 text-basketball-500"></i> Historial Reciente de Acciones</span>
+                            <span class="text-xs font-normal text-gray-500">${matchState.history.length} acciones registradas</span>
+                        </h3>
+                        <div class="space-y-2 max-h-48 overflow-y-auto no-scrollbar">
+                            ${matchState.history.length === 0 ? '<p class="text-xs text-gray-400 italic text-center py-2">No hay acciones registradas en este partido.</p>' : 
+                                matchState.history.slice(-15).reverse().map((act, index) => {
+                                    const actualIndex = matchState.history.length - 1 - index;
+                                    return `
+                                        <div class="flex items-center justify-between bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-xl text-xs font-medium transition">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="px-2 py-0.5 bg-gray-200 text-gray-700 font-bold rounded">${act.quarter}</span>
+                                                <span class="text-gray-900 font-semibold">${act.description}</span>
+                                            </div>
+                                            <button onclick="removeActionByIndex(${actualIndex})" class="text-red-500 hover:text-red-700 p-1" title="Eliminar acción">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </div>
+                                    `;
+                                }).join('')
+                            }
+                        </div>
+                    </div>
+
+                </div>
+            `;
+        }
+
+        function renderTeamControlPanel(teamId, team) {
+            const playersObj = matchState.teamStats[teamId].players;
+            const playersList = Object.values(playersObj).sort((a, b) => a.number - b.number);
+            
+            return `
+                <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col">
+                    <div class="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+                        <h4 class="font-black text-gray-900 text-base">${team.name}</h4>
+                        <span class="text-xs font-bold text-gray-500">Selecciona Jugador y Acción</span>
+                    </div>
+
+                    <div class="space-y-2 mb-4 max-h-64 overflow-y-auto no-scrollbar pr-1">
+                        ${playersList.map(p => {
+                            const isSelected = selectedPlayerForAction.teamId === teamId && selectedPlayerForAction.playerId === p.id;
+                            return `
+                                <div onclick="selectPlayer('${teamId}', '${p.id}')" class="p-3 rounded-xl border-2 transition cursor-pointer flex items-center justify-between ${isSelected ? 'border-basketball-500 bg-orange-50 shadow-sm' : 'border-gray-100 bg-gray-50 hover:border-gray-200'}">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-8 h-8 rounded-lg bg-gray-900 text-white font-black text-sm flex items-center justify-center">
+                                            #${p.number}
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-sm text-gray-900">${p.firstName} ${p.lastName}</p>
+                                            <p class="text-xs text-gray-500">PTS: <span class="font-black text-basketball-600">${p.points}</span> | F: ${p.personalFouls} | T: ${p.technicalFouls}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-bold px-2.5 py-1 rounded-lg ${isSelected ? 'bg-basketball-500 text-white' : 'bg-gray-200 text-gray-700'}">
+                                        ${isSelected ? 'Seleccionado' : 'Elegir'}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    <div class="mt-auto bg-gray-50 rounded-xl p-3 border border-gray-200">
+                        <p class="text-xs font-bold text-gray-700 mb-2 text-center">
+                            ${selectedPlayerForAction.teamId === teamId && selectedPlayerForAction.playerId ? 
+                                `Acciones para: <span class="text-basketball-600 font-black">#${playersObj[selectedPlayerForAction.playerId].number} ${playersObj[selectedPlayerForAction.playerId].firstName}</span>` : 
+                                '<span class="text-red-500">⚠️ Selecciona un jugador arriba para registrar puntos o faltas</span>'
+                            }
+                        </p>
+                        
+                        <div class="grid grid-cols-5 gap-2">
+                            <button onclick="registerAction('${teamId}', 'FT')" ${selectedPlayerForAction.teamId !== teamId || !selectedPlayerForAction.playerId ? 'disabled' : ''} class="py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white font-black text-sm rounded-xl shadow transition flex flex-col items-center justify-center">
+                                <span class="text-base">+1</span>
+                                <span class="text-[10px] font-normal">Libre</span>
+                            </button>
+                            <button onclick="registerAction('${teamId}', '2PT')" ${selectedPlayerForAction.teamId !== teamId || !selectedPlayerForAction.playerId ? 'disabled' : ''} class="py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white font-black text-sm rounded-xl shadow transition flex flex-col items-center justify-center">
+                                <span class="text-base">+2</span>
+                                <span class="text-[10px] font-normal">Doble</span>
+                            </button>
+                            <button onclick="registerAction('${teamId}', '3PT')" ${selectedPlayerForAction.teamId !== teamId || !selectedPlayerForAction.playerId ? 'disabled' : ''} class="py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white font-black text-sm rounded-xl shadow transition flex flex-col items-center justify-center">
+                                <span class="text-base">+3</span>
+                                <span class="text-[10px] font-normal">Triple</span>
+                            </button>
+                            <button onclick="registerAction('${teamId}', 'FOUL')" ${selectedPlayerForAction.teamId !== teamId || !selectedPlayerForAction.playerId ? 'disabled' : ''} class="py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white font-black text-xs rounded-xl shadow transition flex flex-col items-center justify-center">
+                                <span class="text-sm"><i class="fa-solid fa-hand"></i></span>
+                                <span class="text-[10px] font-normal">Falta P.</span>
+                            </button>
+                            <button onclick="registerAction('${teamId}', 'TECH')" ${selectedPlayerForAction.teamId !== teamId || !selectedPlayerForAction.playerId ? 'disabled' : ''} class="py-3 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-black text-xs rounded-xl shadow transition flex flex-col items-center justify-center">
+                                <span class="text-sm"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                                <span class="text-[10px] font-normal">Técnica</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectPlayer(teamId, playerId) {
+            selectedPlayerForAction = { teamId, playerId };
+            renderView();
+        }
+
+        /* ==========================================================================
+           REGISTRO Y GESTIÓN DE ACCIONES
+           ========================================================================== */
+        function registerAction(teamId, type) {
+            const playerId = selectedPlayerForAction.playerId;
+            if (!playerId || selectedPlayerForAction.teamId !== teamId) return;
+
+            const player = matchState.teamStats[teamId].players[playerId];
+            const quarter = matchState.currentQuarter;
+            
+            let points = 0;
+            let description = "";
+
+            if (type === 'FT') {
+                points = 1;
+                player.freeThrows += 1;
+                player.points += 1;
+                description = `Q${quarter} — #${player.number} ${player.firstName} ${player.lastName} — TIRO LIBRE (+1)`;
+            } else if (type === '2PT') {
+                points = 2;
+                player.twoPointers += 1;
+                player.points += 2;
+                description = `Q${quarter} — #${player.number} ${player.firstName} ${player.lastName} — DOBLE (+2)`;
+            } else if (type === '3PT') {
+                points = 3;
+                player.threePointers += 1;
+                player.points += 3;
+                description = `Q${quarter} — #${player.number} ${player.firstName} ${player.lastName} — TRIPLE (+3)`;
+            } else if (type === 'FOUL') {
+                player.personalFouls += 1;
+                matchState.teamStats[teamId].totalFouls += 1;
+                description = `Q${quarter} — #${player.number} ${player.firstName} ${player.lastName} — FALTA PERSONAL`;
+            } else if (type === 'TECH') {
+                player.technicalFouls += 1;
+                matchState.teamStats[teamId].totalTechs += 1;
+                description = `Q${quarter} — #${player.number} ${player.firstName} ${player.lastName} — FALTA TÉCNICA`;
+            }
+
+            if (points > 0) {
+                if (teamId === selectedMatchData.team1Id) {
+                    matchState.scores.team1 += points;
+                    matchState.quarters[quarter].team1 += points;
+                } else {
+                    matchState.scores.team2 += points;
+                    matchState.quarters[quarter].team2 += points;
+                }
+            }
+
+            matchState.history.push({
+                id: Date.now().toString(),
+                quarter: `Q${quarter}`,
+                teamId,
+                playerId,
+                type,
+                points,
+                description,
+                timestamp: new Date().toISOString()
+            });
+
+            saveState();
+            renderView();
+        }
+
+        function undoLastAction() {
+            if (matchState.history.length === 0) return;
+            const lastAction = matchState.history.pop();
+            revertActionData(lastAction);
+            saveState();
+            renderView();
+        }
+
+        function removeActionByIndex(index) {
+            const action = matchState.history[index];
+            matchState.history.splice(index, 1);
+            revertActionData(action);
+            saveState();
+            renderView();
+        }
+
+        function revertActionData(action) {
+            const { teamId, playerId, type, points, quarter } = action;
+            const qNum = parseInt(quarter.replace('Q', ''));
+            const player = matchState.teamStats[teamId].players[playerId];
+
+            if (player) {
+                if (type === 'FT') {
+                    player.freeThrows = Math.max(0, player.freeThrows - 1);
+                    player.points = Math.max(0, player.points - 1);
+                } else if (type === '2PT') {
+                    player.twoPointers = Math.max(0, player.twoPointers - 1);
+                    player.points = Math.max(0, player.points - 2);
+                } else if (type === '3PT') {
+                    player.threePointers = Math.max(0, player.threePointers - 1);
+                    player.points = Math.max(0, player.points - 3);
+                } else if (type === 'FOUL') {
+                    player.personalFouls = Math.max(0, player.personalFouls - 1);
+                    matchState.teamStats[teamId].totalFouls = Math.max(0, matchState.teamStats[teamId].totalFouls - 1);
+                } else if (type === 'TECH') {
+                    player.technicalFouls = Math.max(0, player.technicalFouls - 1);
+                    matchState.teamStats[teamId].totalTechs = Math.max(0, matchState.teamStats[teamId].totalTechs - 1);
+                }
+            }
+
+            if (points > 0) {
+                if (teamId === selectedMatchData.team1Id) {
+                    matchState.scores.team1 = Math.max(0, matchState.scores.team1 - points);
+                    matchState.quarters[qNum].team1 = Math.max(0, matchState.quarters[qNum].team1 - points);
+                } else {
+                    matchState.scores.team2 = Math.max(0, matchState.scores.team2 - points);
+                    matchState.quarters[qNum].team2 = Math.max(0, matchState.quarters[qNum].team2 - points);
+                }
+            }
+        }
+
+        function confirmNextQuarter() {
+            if (matchState.currentQuarter >= 4) {
+                alert("Ya estás en el último cuarto (Q4). Puedes finalizar el partido.");
+                return;
+            }
+            showModal(`
+                <div class="text-center">
+                    <h3 class="text-xl font-black text-gray-900 mb-2">¿Avanzar al siguiente cuarto?</h3>
+                    <p class="text-sm text-gray-600 mb-6">Estás a punto de pasar al Cuarto ${matchState.currentQuarter + 1}.</p>
+                    <div class="flex space-x-3">
+                        <button onclick="closeModal()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl">Cancelar</button>
+                        <button onclick="nextQuarter()" class="flex-1 py-3 bg-basketball-500 hover:bg-basketball-600 text-white font-bold rounded-xl shadow-lg">Avanzar</button>
+                    </div>
+                </div>
+            `);
+        }
+
+        function nextQuarter() {
+            closeModal();
+            if (matchState.currentQuarter < 4) {
+                matchState.currentQuarter += 1;
+                saveState();
+                renderView();
+            }
+        }
+
+        function confirmFinishMatch() {
+            showModal(`
+                <div class="text-center">
+                    <h3 class="text-xl font-black text-gray-900 mb-2">¿Seguro que deseas finalizar el partido?</h3>
+                    <p class="text-sm text-gray-600 mb-6">Una vez finalizado se bloquearán las estadísticas y se generará el reporte oficial.</p>
+                    <div class="flex space-x-3">
+                        <button onclick="closeModal()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl">Cancelar</button>
+                        <button onclick="finishMatch()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg">FINALIZAR</button>
+                    </div>
+                </div>
+            `);
+        }
+
+        function finishMatch() {
+            closeModal();
+            matchState.active = false;
+            matchState.finished = true;
+            matchState.endTime = new Date().toISOString();
+            saveState();
+            currentView = 'report';
+            renderView();
+        }
+
+        function confirmResetMatch() {
+            showModal(`
+                <div class="text-center">
+                    <h3 class="text-xl font-black text-gray-900 mb-2">¿Reiniciar partido actual?</h3>
+                    <p class="text-sm text-gray-600 mb-6">Se borrarán todos los puntos y registros de este partido.</p>
+                    <div class="flex space-x-3">
+                        <button onclick="closeModal()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl">Cancelar</button>
+                        <button onclick="promptAdminPasswordForReset()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl">Continuar</button>
+                    </div>
+                </div>
+            `);
+        }
+
+        function promptAdminPasswordForReset() {
+            showModal(`
+                <div class="text-center">
+                    <div class="w-14 h-14 bg-gray-100 text-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-gray-900 mb-1">Acceso de administrador</h3>
+                    <p class="text-xs text-gray-500 mb-4">Ingresa la contraseña para reiniciar el partido</p>
+                    
+                    <div class="mb-4">
+                        <input type="password" id="admin-password-reset-input" placeholder="Contraseña" class="w-full px-4 py-3 border border-gray-300 rounded-xl text-center text-lg font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-basketball-500">
+                        <p id="admin-reset-error-msg" class="text-xs text-red-500 mt-1 hidden font-semibold">Contraseña incorrecta.</p>
+                    </div>
+
+                    <div class="flex space-x-3">
+                        <button onclick="confirmResetMatch()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">
+                            CANCELAR
+                        </button>
+                        <button onclick="verifyPasswordAndReset()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg transition">
+                            CONFIRMAR
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+
+        function verifyPasswordAndReset() {
+            const inputVal = document.getElementById('admin-password-reset-input').value;
+            if (inputVal === ADMIN_PASSWORD) {
+                resetMatch();
+            } else {
+                const errorMsg = document.getElementById('admin-reset-error-msg');
+                errorMsg.classList.remove('hidden');
+                document.getElementById('admin-password-reset-input').focus();
+            }
+        }
+
+        function resetMatch() {
+            closeModal();
+            localStorage.removeItem('lnc_active_match');
+            selectedMatchData = null;
+            currentView = 'jornadas';
+            renderView();
+        }
+
+        function confirmExitMatch() {
+            currentView = 'home';
+            renderView();
+        }
+
+        /* ==========================================================================
+           MODAL DE ESTADÍSTICAS EN VIVO
+           ========================================================================== */
+        function openStatsModal() {
+            const t1 = TEAMS.find(t => t.id === selectedMatchData.team1Id);
+            const t2 = TEAMS.find(t => t.id === selectedMatchData.team2Id);
+            
+            const stats1 = Object.values(matchState.teamStats[selectedMatchData.team1Id].players).sort((a,b) => b.points - a.points);
+            const stats2 = Object.values(matchState.teamStats[selectedMatchData.team2Id].players).sort((a,b) => b.points - a.points);
+
+            showModal(`
+                <div class="max-h-[80vh] overflow-y-auto no-scrollbar">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-black text-gray-900">Estadísticas en Vivo</h3>
+                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+
+                    <h4 class="font-bold text-sm text-gray-800 mb-2">${t1.name}</h4>
+                    <div class="overflow-x-auto mb-6">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-100 text-gray-700">
+                                <tr>
+                                    <th class="p-2">#</th>
+                                    <th class="p-2">Jugador</th>
+                                    <th class="p-2 text-center">PTS</th>
+                                    <th class="p-2 text-center">F</th>
+                                    <th class="p-2 text-center">T</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                ${stats1.map(p => `
+                                    <tr>
+                                        <td class="p-2 font-bold">${p.number}</td>
+                                        <td class="p-2">${p.firstName} ${p.lastName}</td>
+                                        <td class="p-2 text-center font-black text-basketball-600">${p.points}</td>
+                                        <td class="p-2 text-center">${p.personalFouls}</td>
+                                        <td class="p-2 text-center">${p.technicalFouls}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 class="font-bold text-sm text-gray-800 mb-2">${t2.name}</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-100 text-gray-700">
+                                <tr>
+                                    <th class="p-2">#</th>
+                                    <th class="p-2">Jugador</th>
+                                    <th class="p-2 text-center">PTS</th>
+                                    <th class="p-2 text-center">F</th>
+                                    <th class="p-2 text-center">T</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                ${stats2.map(p => `
+                                    <tr>
+                                        <td class="p-2 font-bold">${p.number}</td>
+                                        <td class="p-2">${p.firstName} ${p.lastName}</td>
+                                        <td class="p-2 text-center font-black text-basketball-600">${p.points}</td>
+                                        <td class="p-2 text-center">${p.personalFouls}</td>
+                                        <td class="p-2 text-center">${p.technicalFouls}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `, true);
+        }
+
+        /* ==========================================================================
+           REPORTE OFICIAL Y PDF UNIFICADO (createMatchPDFBlob)
+           ========================================================================== */
+        function renderReportView() {
+            const t1 = TEAMS.find(t => t.id === selectedMatchData.team1Id);
+            const t2 = TEAMS.find(t => t.id === selectedMatchData.team2Id);
+            const s1 = matchState.scores.team1;
+            const s2 = matchState.scores.team2;
+            const readableDate = formatReadableDate(selectedMatchData.date);
+            const readableTime = formatReadableTime(selectedMatchData.time);
+
+            const stats1 = Object.values(matchState.teamStats[selectedMatchData.team1Id].players).sort((a,b) => b.points - a.points);
+            const stats2 = Object.values(matchState.teamStats[selectedMatchData.team2Id].players).sort((a,b) => b.points - a.points);
+
+            const allPlayers = [...stats1.map(p => ({...p, teamName: t1.name})), ...stats2.map(p => ({...p, teamName: t2.name}))];
+            allPlayers.sort((a,b) => b.points - a.points);
+            const mvp = allPlayers[0] || { firstName: 'N/A', points: 0 };
+            const top1 = stats1[0] || { firstName: 'N/A', points: 0 };
+            const top2 = stats2[0] || { firstName: 'N/A', points: 0 };
+
+            const totalFouls1 = matchState.teamStats[selectedMatchData.team1Id].totalFouls;
+            const totalFouls2 = matchState.teamStats[selectedMatchData.team2Id].totalFouls;
+            const totalTechs1 = matchState.teamStats[selectedMatchData.team1Id].totalTechs;
+            const totalTechs2 = matchState.teamStats[selectedMatchData.team2Id].totalTechs;
+
+            return `
+                <div class="flex-1 p-4 sm:p-8 max-w-4xl mx-auto w-full bg-white">
+                    <div class="flex justify-between items-center mb-6">
+                        <button onclick="currentView='match'; renderView();" class="text-sm font-semibold text-gray-500 hover:text-gray-900">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> Volver
+                        </button>
+                        <div class="flex space-x-2">
+                            <button onclick="generatePDF()" class="px-4 py-2 bg-basketball-500 hover:bg-basketball-600 text-white font-bold text-xs rounded-xl shadow transition flex items-center space-x-2">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <span>Descargar PDF</span>
+                            </button>
+                            <button onclick="sendEmailReport()" class="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-bold text-xs rounded-xl shadow transition flex items-center space-x-2">
+                                <i class="fa-solid fa-envelope"></i>
+                                <span>Enviar Correo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- REPORTE VISUAL -->
+                    <div id="report-content" class="border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+                        <div class="text-center border-b border-gray-200 pb-6 mb-6">
+                            <h2 class="text-xl sm:text-2xl font-black text-gray-900">LIGA NORTE CAJEME</h2>
+                            <p class="text-sm font-bold text-basketball-600 mt-1">REPORTE OFICIAL DEL PARTIDO</p>
+                            <p class="text-xs text-gray-500 mt-1">Jornada ${selectedMatchData.jornadaId} • Fecha: ${readableDate} • Hora: ${readableTime}</p>
+                        </div>
+
+                        <!-- Resultado final -->
+                        <div class="flex items-center justify-between bg-gray-50 p-6 rounded-2xl mb-8 border border-gray-100">
+                            <div class="text-center flex-1">
+                                <h3 class="font-black text-base sm:text-xl text-gray-900">${t1.name}</h3>
+                            </div>
+                            <div class="px-6 text-center">
+                                <span class="text-3xl sm:text-5xl font-black text-basketball-600">${s1} - ${s2}</span>
+                            </div>
+                            <div class="text-center flex-1">
+                                <h3 class="font-black text-base sm:text-xl text-gray-900">${t2.name}</h3>
+                            </div>
+                        </div>
+
+                        <!-- Marcador por cuartos -->
+                        <h4 class="font-bold text-sm text-gray-900 mb-3">MARCADOR POR CUARTOS</h4>
+                        <div class="overflow-x-auto mb-8">
+                            <table class="w-full text-center text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-100 text-gray-700">
+                                        <th class="p-2.5 text-left border border-gray-200">Equipo</th>
+                                        <th class="p-2.5 border border-gray-200">Q1</th>
+                                        <th class="p-2.5 border border-gray-200">Q2</th>
+                                        <th class="p-2.5 border border-gray-200">Q3</th>
+                                        <th class="p-2.5 border border-gray-200">Q4</th>
+                                        <th class="p-2.5 border border-gray-200 font-black">TOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="p-2.5 text-left font-bold border border-gray-200">${t1.name}</td>
+                                        <td class="p-2.5 border border-gray-200">${matchState.quarters[1].team1}</td>
+                                        <td class="p-2.5 border border-gray-200">${matchState.quarters[2].team1}</td>
+                                        <td class="p-2.5 border border-gray-200">${matchState.quarters[3].team1}</td>
+                                        <td class="p-2.5 border border-gray-200">${matchState.quarters[4].team1}</td>
+                                        <td class="p-2.5 border border-gray-200 font-black text-basketball-600">${s1}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2.5 text-left font-bold border border-gray-200">${t2.name}</td>
+                                        <td class="p-2.5 border border-gray-200">${matchState.quarters[1].team2}</td>
+                                        <td class="p-2.5 border border-gray-200">${matchState.quarters[2].team2}</td>
+                                        <td class="p-2.5 border border-gray-200">${matchState.quarters[3].team2}</td>
+                                        <td class="p-2.5 border border-gray-200">${matchState.quarters[4].team2}</td>
+                                        <td class="p-2.5 border border-gray-200 font-black text-basketball-600">${s2}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Estadísticas individuales detalladas -->
+                        <h4 class="font-bold text-sm text-gray-900 mb-3">ESTADÍSTICAS INDIVIDUALES — ${t1.name}</h4>
+                        <div class="overflow-x-auto mb-6">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead class="bg-gray-100 text-gray-700">
+                                    <tr>
+                                        <th class="p-2 border border-gray-200">#</th>
+                                        <th class="p-2 border border-gray-200">Jugador</th>
+                                        <th class="p-2 text-center border border-gray-200">1 PT</th>
+                                        <th class="p-2 text-center border border-gray-200">DOBLES</th>
+                                        <th class="p-2 text-center border border-gray-200">TRIPLES</th>
+                                        <th class="p-2 text-center border border-gray-200 font-black">PTS</th>
+                                        <th class="p-2 text-center border border-gray-200">FALTAS</th>
+                                        <th class="p-2 text-center border border-gray-200">TÉCNICAS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${stats1.map(p => `
+                                        <tr>
+                                            <td class="p-2 border border-gray-200 font-bold">${p.number}</td>
+                                            <td class="p-2 border border-gray-200">${p.firstName} ${p.lastName}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.freeThrows}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.twoPointers}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.threePointers}</td>
+                                            <td class="p-2 text-center border border-gray-200 font-black text-basketball-600">${p.points}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.personalFouls}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.technicalFouls}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h4 class="font-bold text-sm text-gray-900 mb-3">ESTADÍSTICAS INDIVIDUALES — ${t2.name}</h4>
+                        <div class="overflow-x-auto mb-8">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead class="bg-gray-100 text-gray-700">
+                                    <tr>
+                                        <th class="p-2 border border-gray-200">#</th>
+                                        <th class="p-2 border border-gray-200">Jugador</th>
+                                        <th class="p-2 text-center border border-gray-200">1 PT</th>
+                                        <th class="p-2 text-center border border-gray-200">DOBLES</th>
+                                        <th class="p-2 text-center border border-gray-200">TRIPLES</th>
+                                        <th class="p-2 text-center border border-gray-200 font-black">PTS</th>
+                                        <th class="p-2 text-center border border-gray-200">FALTAS</th>
+                                        <th class="p-2 text-center border border-gray-200">TÉCNICAS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${stats2.map(p => `
+                                        <tr>
+                                            <td class="p-2 border border-gray-200 font-bold">${p.number}</td>
+                                            <td class="p-2 border border-gray-200">${p.firstName} ${p.lastName}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.freeThrows}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.twoPointers}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.threePointers}</td>
+                                            <td class="p-2 text-center border border-gray-200 font-black text-basketball-600">${p.points}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.personalFouls}</td>
+                                            <td class="p-2 text-center border border-gray-200">${p.technicalFouls}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Resumen general -->
+                        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-8">
+                            <h4 class="font-bold text-sm text-gray-900 mb-3">RESUMEN DEL PARTIDO</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                <div><span class="font-bold">Máximo Anotador del Partido:</span> ${mvp.firstName} ${mvp.lastName} (${mvp.teamName}) — ${mvp.points} PTS</div>
+                                <div><span class="font-bold">Máximo Anotador (${t1.name}):</span> ${top1.firstName} ${top1.lastName} — ${top1.points} PTS</div>
+                                <div><span class="font-bold">Máximo Anotador (${t2.name}):</span> ${top2.firstName} ${top2.lastName} — ${top2.points} PTS</div>
+                                <div><span class="font-bold">Total Faltas (${t1.name}):</span> ${totalFouls1} personales, ${totalTechs1} técnicas</div>
+                                <div><span class="font-bold">Total Faltas (${t2.name}):</span> ${totalFouls2} personales, ${totalTechs2} técnicas</div>
+                            </div>
+                        </div>
+
+                        <!-- Historial de acciones detallado -->
+                        <h4 class="font-bold text-sm text-gray-900 mb-3">DETALLE DE ACCIONES</h4>
+                        <div class="space-y-1.5 max-h-60 overflow-y-auto no-scrollbar bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            ${matchState.history.map(act => `
+                                <div class="text-xs text-gray-700 font-medium py-1 border-b border-gray-200/50 flex justify-between">
+                                    <span>${act.description}</span>
+                                    <span class="text-gray-400 font-mono">${new Date(act.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /* Función Unificada para crear el PDF Blob con todos los datos reales */
+        function createMatchPDFBlob() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                throw new Error("Librería jsPDF no disponible.");
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const t1 = TEAMS.find(t => t.id === selectedMatchData.team1Id);
+            const t2 = TEAMS.find(t => t.id === selectedMatchData.team2Id);
+            const s1 = matchState.scores.team1;
+            const s2 = matchState.scores.team2;
+            const readableDate = formatReadableDate(selectedMatchData.date);
+            const readableTime = formatReadableTime(selectedMatchData.time);
+
+            // Encabezado
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(18);
+            doc.text("LIGA NORTE CAJEME", 105, 15, { align: "center" });
+            
+            doc.setFontSize(12);
+            doc.setTextColor(249, 115, 22);
+            doc.text("REPORTE OFICIAL DEL PARTIDO", 105, 22, { align: "center" });
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Jornada ${selectedMatchData.jornadaId} | Fecha: ${readableDate} | Hora: ${readableTime}`, 105, 28, { align: "center" });
+
+            // Resultado final
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`${t1.name}   ${s1} - ${s2}   ${t2.name}`, 105, 38, { align: "center" });
+
+            let startY = 46;
+
+            // Tabla por cuartos
+            doc.setFontSize(11);
+            doc.text("MARCADOR POR CUARTOS", 14, startY);
+
+            const quartersData = [
+                [t1.name, matchState.quarters[1].team1, matchState.quarters[2].team1, matchState.quarters[3].team1, matchState.quarters[4].team1, s1],
+                [t2.name, matchState.quarters[1].team2, matchState.quarters[2].team2, matchState.quarters[3].team2, matchState.quarters[4].team2, s2]
+            ];
+
+            if (doc.autoTable) {
+                doc.autoTable({
+                    startY: startY + 4,
+                    head: [['Equipo', 'Q1', 'Q2', 'Q3', 'Q4', 'TOTAL']],
+                    body: quartersData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [249, 115, 22] },
+                    styles: { halign: 'center' }
+                });
+                startY = doc.lastAutoTable.finalY + 10;
+            } else {
+                startY += 25;
+            }
+
+            // Estadísticas equipo 1 con datos reales de matchState
+            doc.text(`ESTADÍSTICAS INDIVIDUALES — ${t1.name}`, 14, startY);
+            const stats1 = Object.values(matchState.teamStats[selectedMatchData.team1Id].players).map(p => [
+                p.number, `${p.firstName} ${p.lastName}`, p.freeThrows, p.twoPointers, p.threePointers, p.points, p.personalFouls, p.technicalFouls
+            ]);
+
+            if (doc.autoTable) {
+                doc.autoTable({
+                    startY: startY + 4,
+                    head: [['#', 'Jugador', '1 PT', 'Dobles', 'Triples', 'PTS', 'Faltas', 'Técnicas']],
+                    body: stats1,
+                    theme: 'grid',
+                    headStyles: { fillColor: [40, 40, 40] }
+                });
+                startY = doc.lastAutoTable.finalY + 10;
+            } else {
+                startY += 30;
+            }
+
+            // Estadísticas equipo 2 con datos reales de matchState
+            doc.text(`ESTADÍSTICAS INDIVIDUALES — ${t2.name}`, 14, startY);
+            const stats2 = Object.values(matchState.teamStats[selectedMatchData.team2Id].players).map(p => [
+                p.number, `${p.firstName} ${p.lastName}`, p.freeThrows, p.twoPointers, p.threePointers, p.points, p.personalFouls, p.technicalFouls
+            ]);
+
+            if (doc.autoTable) {
+                doc.autoTable({
+                    startY: startY + 4,
+                    head: [['#', 'Jugador', '1 PT', 'Dobles', 'Triples', 'PTS', 'Faltas', 'Técnicas']],
+                    body: stats2,
+                    theme: 'grid',
+                    headStyles: { fillColor: [40, 40, 40] }
+                });
+                startY = doc.lastAutoTable.finalY + 10;
+            } else {
+                startY += 30;
+            }
+
+            // Detalle de acciones
+            doc.addPage();
+            doc.text("DETALLE DE ACCIONES DEL PARTIDO", 14, 20);
+            const historyData = matchState.history.map(act => [
+                act.quarter, act.description, new Date(act.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            ]);
+
+            if (doc.autoTable) {
+                doc.autoTable({
+                    startY: 25,
+                    head: [['Cuarto', 'Acción Registrada', 'Hora']],
+                    body: historyData.length > 0 ? historyData : [['-', 'Sin acciones registradas', '-']],
+                    theme: 'grid',
+                    headStyles: { fillColor: [249, 115, 22] }
+                });
+            }
+
+            return doc;
+        }
+
+        let isGeneratingPdf = false;
+        function generatePDF() {
+            if (isGeneratingPdf) return;
+            isGeneratingPdf = true;
+            setTimeout(() => { isGeneratingPdf = false; }, 1500);
+
+            try {
+                const doc = createMatchPDFBlob();
+                const t1 = TEAMS.find(t => t.id === selectedMatchData.team1Id);
+                const t2 = TEAMS.find(t => t.id === selectedMatchData.team2Id);
+                const cleanName1 = t1.shortName.replace(/[^a-zA-Z0-9]/g, '_');
+                const cleanName2 = t2.shortName.replace(/[^a-zA-Z0-9]/g, '_');
+                doc.save(`Reporte_Jornada_${selectedMatchData.jornadaId}_${cleanName1}_vs_${cleanName2}.pdf`);
+            } catch (error) {
+                console.error("Error al generar PDF:", error);
+                alert("Ocurrió un error al generar el archivo PDF. Revisa tu conexión a Internet.");
+            }
+        }
+
+        /* Envío de correo usando FormSubmit y la misma función createMatchPDFBlob */
+        async function sendEmailReport() {
+            const t1 = TEAMS.find(t => t.id === selectedMatchData.team1Id);
+            const t2 = TEAMS.find(t => t.id === selectedMatchData.team2Id);
+            const s1 = matchState.scores.team1;
+            const s2 = matchState.scores.team2;
+
+            showModal(`
+                <div class="text-center py-4">
+                    <div class="w-12 h-12 border-4 border-basketball-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-1" id="modal-status-title">Generando PDF...</h3>
+                    <p class="text-xs text-gray-500" id="modal-status-desc">Preparando archivo unificado para envío seguro.</p>
+                </div>
+            `);
+
+            try {
+                const doc = createMatchPDFBlob();
+                const pdfBlob = doc.output('blob');
+                const cleanName1 = t1.shortName.replace(/[^a-zA-Z0-9]/g, '_');
+                const cleanName2 = t2.shortName.replace(/[^a-zA-Z0-9]/g, '_');
+                const pdfFileName = `Reporte_Jornada_${selectedMatchData.jornadaId}_${cleanName1}_vs_${cleanName2}.pdf`;
+
+                document.getElementById('modal-status-title').innerText = "Enviando reporte...";
+                document.getElementById('modal-status-desc').innerText = "Transmitiendo datos a Musica00p55@gmail.com";
+
+                const formData = new FormData();
+                formData.append('_subject', `Reporte Partido — Liga Norte Cajeme — Jornada ${selectedMatchData.jornadaId}`);
+                formData.append('message', `Reporte oficial del partido:\n\n${t1.name} ${s1} - ${s2} ${t2.name}\nJornada: ${selectedMatchData.jornadaId}\nFecha: ${formatReadableDate(selectedMatchData.date)}\nHora: ${formatReadableTime(selectedMatchData.time)}`);
+                formData.append('_template', 'box');
+                formData.append('_captcha', 'false');
+                formData.append('attachment', pdfBlob, pdfFileName);
+
+                const response = await fetch("https://formsubmit.co/ajax/Musica00p55@gmail.com", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showModal(`
+                        <div class="text-center py-4">
+                            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+                            <h3 class="text-xl font-black text-gray-900 mb-2">¡Solicitud de Envío Exitosa!</h3>
+                            <p class="text-sm text-gray-600 mb-4">El servidor ha procesado el envío del reporte oficial a <strong>Musica00p55@gmail.com</strong>.</p>
+                            <p class="text-xs text-gray-500 mb-6 bg-orange-50 p-3 rounded-xl border border-orange-200">
+                                ⚠️ <strong>Nota importante:</strong> Si es la primera vez que se utiliza este servicio con este correo, FormSubmit requiere que revises tu bandeja de entrada o correo no deseado (spam) para activar y confirmar el servicio.
+                            </p>
+                            <button onclick="closeModal()" class="w-full py-3 bg-gray-900 text-white font-bold rounded-xl">Aceptar</button>
+                        </div>
+                    `);
+                } else {
+                    throw new Error("Respuesta no exitosa de FormSubmit");
+                }
+
+            } catch (error) {
+                console.warn("FormSubmit AJAX limitación o error de red, ejecutando respaldo de descarga local:", error);
+                generatePDF();
+                showModal(`
+                    <div class="text-center py-4">
+                        <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-gray-900 mb-2">Aviso de Envío</h3>
+                        <p class="text-sm text-gray-600 mb-6">No se pudo enviar automáticamente por restricciones de red o confirmación pendiente. El PDF se ha descargado localmente en tu dispositivo como respaldo.</p>
+                        <button onclick="closeModal()" class="w-full py-3 bg-basketball-500 text-white font-bold rounded-xl">Entendido</button>
+                    </div>
+                `);
+            }
+        }
+
+        /* ==========================================================================
+           UTILIDADES DE MODAL
+           ========================================================================== */
+        function showModal(htmlContent, wide = false) {
+            const modal = document.getElementById('modal-container');
+            const content = document.getElementById('modal-content');
+            content.className = `bg-white rounded-2xl ${wide ? 'max-w-2xl' : 'max-w-md'} w-full p-6 shadow-2xl transform transition-all`;
+            content.innerHTML = htmlContent;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal-container');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        // Inicializar al cargar
+        window.onload = initApp;
+    </script>
+</body>
+</html>
